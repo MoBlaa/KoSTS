@@ -1,50 +1,40 @@
 package org.myshelf.kosts
 
-import java.security.KeyPair
 import java.security.PublicKey
-import java.util.concurrent.atomic.AtomicReference
 
-class Bob(
-        override val keyPair: AtomicReference<KeyPair> = AtomicReference(),
-        override val secret: AtomicReference<ByteArray> = AtomicReference(),
-        override val otherPub: AtomicReference<PublicKey> = AtomicReference()
-) : IBob {
-    override fun receivePubKey(alicePubKey: PublicKey): BobPubKeyAndSignAndCipherParams {
-        // Save pubKey
-        this.otherPub.set(alicePubKey)
-
-        // Generate own KeyPair
-        val keyPairGenerator = keyPairGenerator()
-        val bobsKeyPair = keyPairGenerator.genKeyPair()
-        this.keyPair.set(bobsKeyPair)
+class Bob : BaseBob() {
+    override fun receivePubKey(alicePubKey: PublicKey, aliceSalt: ByteArray, aliceIV: ByteArray): BobPubKeyAndSignAndCipherParams {
+        // Save alicePubKey
+        this.otherPub = alicePubKey
+        this.oppositeSalt = aliceSalt
+        this.oppositeIV = aliceIV
 
         // Generate Secret
-        val agreement = keyAgreement(bobsKeyPair.private, alicePubKey)
+        val agreement = keyAgreement(this.keyPair.private, alicePubKey)
         val secret = agreement.generateSecret()
-        this.secret.set(secret)
+        this.secret = secret
 
         // Generate Signature
-        val concat = bobsKeyPair.public.concat(alicePubKey)
-        val sign = signature(concat, bobsKeyPair.private)
+        val concat = this.keyPair.public.concat(alicePubKey)
+        val sign = signature(concat, this.keyPair.private)
         val signature = sign.sign()
 
         // Encrypt
-        val salt = salt()
-        val cryptor = BaseCryptor(secret, salt)
-        val (encrBobSign, bobIV) = cryptor.encrypt(signature)
+        val cryptor = BaseCryptor(secret, this.ownSalt, this.ownIV)
+        val encrBobSign = cryptor.encrypt(signature)
 
-        return BobPubKeyAndSignAndCipherParams(bobsKeyPair.public, encrBobSign, salt, bobIV)
+        return BobPubKeyAndSignAndCipherParams(this.keyPair.public, encrBobSign, this.ownSalt, this.ownIV)
     }
 
-    override fun receiveSignature(encrSign: ByteArray, salt: ByteArray, iv: ByteArray): Boolean {
+    override fun receiveSignature(encrSign: ByteArray): Boolean {
         // Decrypt
-        val aliceCryptor = BaseCryptor(this.secret.get(), salt)
-        val decrypted = aliceCryptor.decrypt(encrSign, iv)
+        val aliceCryptor = BaseCryptor(this.secret!!, this.oppositeSalt!!, this.oppositeIV!!)
+        val decrypted = aliceCryptor.decrypt(encrSign)
 
         // Verify Signature
-        val concatAlice = this.otherPub.get().concat(this.keyPair.get().public)
+        val concatAlice = this.otherPub!!.concat(this.keyPair.public)
 
-        val verifier = verify(concatAlice, this.otherPub.get())
+        val verifier = verify(concatAlice, this.otherPub!!)
         return verifier.verify(decrypted)
     }
 }

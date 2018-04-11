@@ -3,47 +3,54 @@ package org.myshelf.kosts
 import java.security.KeyPair
 import java.security.PublicKey
 import java.util.*
-import java.util.concurrent.atomic.AtomicReference
-import javax.crypto.Cipher
 
-interface IEntity {
-    val keyPair: AtomicReference<KeyPair>
-    val secret: AtomicReference<ByteArray>
-    val otherPub: AtomicReference<PublicKey>
+abstract class IEntity {
+    // Things that can be shared at the beginning
+    val ownSalt: ByteArray = salt()
+    val ownIV: ByteArray = generateIV()
+    val keyPair: KeyPair = keyPairGenerator().genKeyPair()
+    var oppositeSalt: ByteArray? = null
+    var oppositeIV: ByteArray? = null
+
+    // Things that will be generated during the algorithm
+    var secret: ByteArray? = null
+    var otherPub: PublicKey? = null
 }
 
-interface IAlice : IEntity {
-    fun generatePublicKey(): PublicKey
-    fun receivePubKeyAndSign(bobsKey: PublicKey, encrBobsSignature: ByteArray, bobsSalt: ByteArray, cipherIV: ByteArray): AliceSignAndCipherParams
+// Alice is starting the algorithm by providing a QR-Code
+abstract class BaseAlice : IEntity() {
+    abstract fun getInitDataAndPubKey(): InitData
+    abstract fun receivePubKeyAndSign(bobsKey: PublicKey, encrBobsSignature: ByteArray, bobsSalt: ByteArray, bobsIV: ByteArray): ByteArray
 }
 
-interface IBob : IEntity {
-    fun receivePubKey(alicePubKey: PublicKey): BobPubKeyAndSignAndCipherParams
-    fun receiveSignature(encrSign: ByteArray, salt: ByteArray, iv: ByteArray): Boolean
+// Bob receives the QR-Code
+abstract class BaseBob : IEntity() {
+    abstract fun receivePubKey(alicePubKey: PublicKey, aliceSalt: ByteArray, aliceIV: ByteArray): BobPubKeyAndSignAndCipherParams
+    abstract fun receiveSignature(encrSign: ByteArray): Boolean
 }
 
-data class AliceSignAndCipherParams(
-        val sign: ByteArray,
-        val salt: ByteArray,
-        val iv: ByteArray
+data class InitData (
+        val aliceSalt: ByteArray,
+        val aliceIV: ByteArray,
+        val alicePubKey: PublicKey
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as AliceSignAndCipherParams
+        other as InitData
 
-        if (!Arrays.equals(sign, other.sign)) return false
-        if (!Arrays.equals(salt, other.salt)) return false
-        if (!Arrays.equals(iv, other.iv)) return false
+        if (!Arrays.equals(aliceSalt, other.aliceSalt)) return false
+        if (!Arrays.equals(aliceIV, other.aliceIV)) return false
+        if (alicePubKey != other.alicePubKey) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = Arrays.hashCode(sign)
-        result = 31 * result + Arrays.hashCode(salt)
-        result = 31 * result + Arrays.hashCode(iv)
+        var result = Arrays.hashCode(aliceSalt)
+        result = 31 * result + Arrays.hashCode(aliceIV)
+        result = 31 * result + alicePubKey.hashCode()
         return result
     }
 }

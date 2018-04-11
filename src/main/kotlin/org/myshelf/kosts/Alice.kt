@@ -1,38 +1,30 @@
 package org.myshelf.kosts
 
-import java.security.KeyPair
 import java.security.PublicKey
-import java.util.concurrent.atomic.AtomicReference
 
-class Alice(
-        override val keyPair: AtomicReference<KeyPair> = AtomicReference(),
-        override val secret: AtomicReference<ByteArray> = AtomicReference(),
-        override val otherPub: AtomicReference<PublicKey> = AtomicReference()
-) : IAlice {
+class Alice: BaseAlice() {
 
-    override fun generatePublicKey(): PublicKey {
-        val gen = keyPairGenerator()
-        val keyPair = gen.generateKeyPair()
-        this.keyPair.set(keyPair)
-        return keyPair.public
+    override fun getInitDataAndPubKey(): InitData {
+        return InitData(this.ownSalt, this.ownIV, this.keyPair.public)
     }
 
     @Throws(IllegalStateException::class)
-    override fun receivePubKeyAndSign(bobsKey: PublicKey, encrBobsSignature: ByteArray, bobsSalt: ByteArray, cipherIV: ByteArray): AliceSignAndCipherParams {
+    override fun receivePubKeyAndSign(bobsKey: PublicKey, encrBobsSignature: ByteArray, bobsSalt: ByteArray, bobsIV: ByteArray): ByteArray {
         // save public key of opposite
-        this.otherPub.set(bobsKey)
+        this.otherPub = bobsKey
+        this.oppositeIV = bobsIV
+        this.oppositeSalt = bobsSalt
 
         // Generate Secret
-        val agreement = keyAgreement(this.keyPair.get().private, bobsKey)
-        val secret = agreement.generateSecret()
-        this.secret.set(secret)
+        val agreement = keyAgreement(this.keyPair.private, bobsKey)
+        this.secret = agreement.generateSecret()
 
         // Decrypt
-        val cryptor = BaseCryptor(secret, bobsSalt)
-        val signature = cryptor.decrypt(encrBobsSignature, cipherIV)
+        val cryptor = BaseCryptor(this.secret!!, bobsSalt, bobsIV)
+        val signature = cryptor.decrypt(encrBobsSignature)
 
         // concat the public keys ( as viewed from bob )
-        val concatBob = bobsKey.concat(this.keyPair.get().public)
+        val concatBob = bobsKey.concat(this.keyPair.public)
         // Verify the signature with bobs public key
         val verifier = verify(concatBob, bobsKey)
         val verified = verifier.verify(signature)
@@ -42,15 +34,14 @@ class Alice(
         }
 
         // concat the public keys ( from alice point of view )
-        val concatAlice = this.keyPair.get().public.concat(bobsKey)
+        val concatAlice = this.keyPair.public.concat(bobsKey)
         // Generate own Signature
-        val sign = signature(concatAlice, this.keyPair.get().private)
+        val sign = signature(concatAlice, this.keyPair.private)
         val signAlice = sign.sign()
         // Encrypt the signature
-        val aliceSalt = salt()
-        val aliceCryptor = BaseCryptor(secret, aliceSalt)
-        val (encrAliceSign, aliceIV) = aliceCryptor.encrypt(signAlice)
+        val aliceCryptor = BaseCryptor(this.secret!!, this.ownSalt, this.ownIV)
+        val encrAliceSign = aliceCryptor.encrypt(signAlice)
 
-        return AliceSignAndCipherParams(encrAliceSign, aliceSalt, aliceIV)
+        return encrAliceSign
     }
 }

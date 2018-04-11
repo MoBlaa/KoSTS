@@ -19,7 +19,7 @@ fun secureRandom(): SecureRandom {
 
 fun keyPairGenerator(): KeyPairGenerator {
     val keyPairGenerator = KeyPairGenerator.getInstance("ECDH", "BC")
-    keyPairGenerator.initialize(ECGenParameterSpec("secp256r1"), secureRandom())
+    keyPairGenerator.initialize(ECGenParameterSpec("secp521r1"), secureRandom())
     return keyPairGenerator
 }
 
@@ -56,6 +56,14 @@ fun salt(): ByteArray {
     val salt = ByteArray(8)
     random.nextBytes(salt)
     return salt
+}
+
+fun generateIV(): ByteArray {
+    val cipher = cipher()
+    val random = SecureRandom()
+    val iv = ByteArray(cipher.blockSize)
+    random.nextBytes(iv)
+    return iv
 }
 
 fun cipher(): Cipher {
