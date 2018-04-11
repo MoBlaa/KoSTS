@@ -6,15 +6,21 @@ import java.util.*
 
 abstract class IEntity {
     // Things that can be shared at the beginning
-    val ownSalt: ByteArray = salt()
-    val ownIV: ByteArray = generateIV()
-    val keyPair: KeyPair = keyPairGenerator().genKeyPair()
+    var ownSalt: ByteArray = salt()
+    var ownIV: ByteArray = generateIV()
+    var keyPair: KeyPair = keyPairGenerator().genKeyPair()
     var oppositeSalt: ByteArray? = null
     var oppositeIV: ByteArray? = null
 
     // Things that will be generated during the algorithm
     var secret: ByteArray? = null
     var otherPub: PublicKey? = null
+
+    fun reinit() {
+        this.ownSalt = salt()
+        this.ownIV = generateIV()
+        this.keyPair = keyPairGenerator().genKeyPair()
+    }
 }
 
 // Alice is starting the algorithm by providing a QR-Code
@@ -34,6 +40,14 @@ data class InitData (
         val aliceIV: ByteArray,
         val alicePubKey: PublicKey
 ) {
+    fun toBytesArray(): ByteArray {
+        val concat = ByteArray(aliceSalt.size + aliceIV.size + alicePubKey.encoded.size)
+        System.arraycopy(aliceSalt, 0, concat, 0, aliceSalt.size)
+        System.arraycopy(aliceIV, 0, concat, aliceSalt.size, aliceIV.size)
+        System.arraycopy(alicePubKey.encoded, 0, concat, aliceSalt.size + aliceIV.size, alicePubKey.encoded.size)
+        return concat
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
