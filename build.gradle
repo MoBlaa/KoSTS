@@ -1,0 +1,56 @@
+buildscript {
+    ext {
+        // Main dependencies
+        kotlin_version = '1.2.31'
+
+        // Testing
+        junit_version = '5.1.0'
+
+        // Encryption
+        bc_version = '1.59'
+
+        // Plugins
+        shadow_version = '2.0.3'
+    }
+
+    repositories {
+        mavenCentral()
+        jcenter()
+        mavenLocal()
+    }
+    dependencies {
+        classpath "com.github.jengelman.gradle.plugins:shadow:$shadow_version"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+group 'org.myshelf.kosts'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'kotlin'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    jcenter()
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+    // Testing
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junit_version")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junit_version")
+
+    // Encryption
+    compile "org.bouncycastle:bcprov-jdk15on:$bc_version"
+    shadow "org.bouncycastle:bcprov-jdk15on:$bc_version"
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
