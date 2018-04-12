@@ -2,7 +2,7 @@ package org.myshelf.kosts
 
 import java.security.PublicKey
 
-class Alice: BaseAlice() {
+class Alice(provider: Provider = defaultProvider()) : BaseAlice(provider) {
 
     override fun getInitDataAndPubKey(): InitData {
         return InitData(this.ownSalt, this.ownIV, this.keyPair.public)
@@ -16,18 +16,15 @@ class Alice: BaseAlice() {
         this.oppositeSalt = bobsSalt
 
         // Generate Secret
-        val agreement = keyAgreement(this.keyPair.private, bobsKey)
-        this.secret = agreement.generateSecret()
+        this.secret = this.provider.doKeyAgreement(this.provider, this.keyPair.private, bobsKey)
 
         // Decrypt
-        val cryptor = BaseCryptor(this.secret!!, bobsSalt, bobsIV)
-        val signature = cryptor.decrypt(encrBobsSignature)
+        val signature = this.provider.doDecrypt(this.provider, String(secret!!, CHARSET), bobsSalt, bobsIV, encrBobsSignature)
 
         // concat the public keys ( as viewed from bob )
         val concatBob = bobsKey.concat(this.keyPair.public)
         // Verify the signature with bobs public key
-        val verifier = verify(concatBob, bobsKey)
-        val verified = verifier.verify(signature)
+        val verified = this.provider.doVerify(this.provider, concatBob.toByteArray(CHARSET), bobsKey, signature)
 
         if (!verified) {
             throw IllegalStateException("Signature couldn't be verified!")
@@ -36,11 +33,9 @@ class Alice: BaseAlice() {
         // concat the public keys ( from alice point of view )
         val concatAlice = this.keyPair.public.concat(bobsKey)
         // Generate own Signature
-        val sign = signature(concatAlice, this.keyPair.private)
-        val signAlice = sign.sign()
+        val signAlice = this.provider.doSign(this.provider, concatAlice.toByteArray(CHARSET), this.keyPair.private)
         // Encrypt the signature
-        val aliceCryptor = BaseCryptor(this.secret!!, this.ownSalt, this.ownIV)
-        val encrAliceSign = aliceCryptor.encrypt(signAlice)
+        val encrAliceSign = this.provider.doEncrypt(this.provider, String(secret!!, CHARSET), this.ownSalt, this.ownIV, signAlice)
 
         return encrAliceSign
     }

@@ -2,7 +2,7 @@ package org.myshelf.kosts
 
 import java.security.PublicKey
 
-class Bob : BaseBob() {
+class Bob(provider: Provider = defaultProvider()) : BaseBob(provider) {
     override fun receivePubKey(alicePubKey: PublicKey, aliceSalt: ByteArray, aliceIV: ByteArray): BobPubKeyAndSignAndCipherParams {
         // Save alicePubKey
         this.otherPub = alicePubKey
@@ -10,31 +10,25 @@ class Bob : BaseBob() {
         this.oppositeIV = aliceIV
 
         // Generate Secret
-        val agreement = keyAgreement(this.keyPair.private, alicePubKey)
-        val secret = agreement.generateSecret()
-        this.secret = secret
+        this.secret = this.provider.doKeyAgreement(this.provider, this.keyPair.private, alicePubKey)
 
         // Generate Signature
         val concat = this.keyPair.public.concat(alicePubKey)
-        val sign = signature(concat, this.keyPair.private)
-        val signature = sign.sign()
+        val signature = this.provider.doSign(this.provider, concat.toByteArray(CHARSET), this.keyPair.private)
 
         // Encrypt
-        val cryptor = BaseCryptor(secret, this.ownSalt, this.ownIV)
-        val encrBobSign = cryptor.encrypt(signature)
+        val encrBobSign = this.provider.doEncrypt(this.provider, String(secret!!, CHARSET), this.ownSalt, this.ownIV, signature)
 
         return BobPubKeyAndSignAndCipherParams(this.keyPair.public, encrBobSign, this.ownSalt, this.ownIV)
     }
 
     override fun receiveSignature(encrSign: ByteArray): Boolean {
         // Decrypt
-        val aliceCryptor = BaseCryptor(this.secret!!, this.oppositeSalt!!, this.oppositeIV!!)
-        val decrypted = aliceCryptor.decrypt(encrSign)
+        val decrypted = this.provider.doDecrypt(this.provider, String(secret!!, CHARSET), this.oppositeSalt!!, this.oppositeIV!!, encrSign)
 
         // Verify Signature
         val concatAlice = this.otherPub!!.concat(this.keyPair.public)
 
-        val verifier = verify(concatAlice, this.otherPub!!)
-        return verifier.verify(decrypted)
+        return this.provider.doVerify(this.provider, concatAlice.toByteArray(CHARSET), this.otherPub!!, decrypted)
     }
 }

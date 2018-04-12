@@ -1,14 +1,17 @@
 package org.myshelf.kosts
 
+import java.nio.charset.Charset
 import java.security.KeyPair
 import java.security.PublicKey
 import java.util.*
 
-abstract class IEntity {
+val CHARSET = Charset.forName("UTF-8")
+
+open class IEntity(protected val provider: Provider) {
     // Things that can be shared at the beginning
-    var ownSalt: ByteArray = salt()
-    var ownIV: ByteArray = generateIV()
-    var keyPair: KeyPair = keyPairGenerator().genKeyPair()
+    var ownSalt: ByteArray = provider.salt()
+    var ownIV: ByteArray = provider.generateIV()
+    var keyPair: KeyPair = provider.doKeyAgreementKeyPair(provider)
     var oppositeSalt: ByteArray? = null
     var oppositeIV: ByteArray? = null
 
@@ -17,20 +20,20 @@ abstract class IEntity {
     var otherPub: PublicKey? = null
 
     fun reinit() {
-        this.ownSalt = salt()
-        this.ownIV = generateIV()
-        this.keyPair = keyPairGenerator().genKeyPair()
+        this.ownSalt = this.provider.salt()
+        this.ownIV = this.provider.generateIV()
+        this.keyPair = this.provider.doKeyAgreementKeyPair(this.provider)
     }
 }
 
 // Alice is starting the algorithm by providing a QR-Code
-abstract class BaseAlice : IEntity() {
+abstract class BaseAlice(provider: Provider) : IEntity(provider) {
     abstract fun getInitDataAndPubKey(): InitData
     abstract fun receivePubKeyAndSign(bobsKey: PublicKey, encrBobsSignature: ByteArray, bobsSalt: ByteArray, bobsIV: ByteArray): ByteArray
 }
 
 // Bob receives the QR-Code
-abstract class BaseBob : IEntity() {
+abstract class BaseBob(provider: Provider) : IEntity(provider) {
     abstract fun receivePubKey(alicePubKey: PublicKey, aliceSalt: ByteArray, aliceIV: ByteArray): BobPubKeyAndSignAndCipherParams
     abstract fun receiveSignature(encrSign: ByteArray): Boolean
 }

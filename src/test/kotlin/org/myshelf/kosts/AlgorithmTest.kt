@@ -22,13 +22,17 @@ class AlgorithmTest {
 
         val (aliceSalt, aliceIV, alicePubKey) = alice.getInitDataAndPubKey()
         printBytes("AlicePubKey", alicePubKey.encoded)
+        println("public length: ${alicePubKey.encoded.size * 8}")
         printBytes("AlicePrivKey", alice.keyPair.private.encoded)
+        println("private length: ${alice.keyPair.private.encoded.size * 8}")
 
         // Communication 1: Send Alice' public key to bob
 
         val (bobPubKey, bobSign, bobsSalt, bobIV) = bob.receivePubKey(alicePubKey, aliceSalt, aliceIV)
         printBytes("BobPubKey", bobPubKey.encoded)
+        println("public length: ${bobPubKey.encoded.size * 8}")
         printBytes("BobPrivKey", bob.keyPair.private.encoded)
+        println("private length: ${bob.keyPair.private.encoded.size * 8}")
 
         // Communication 2: Send Bobs public key, encrypted Signature and encryption Params to Alice
 
@@ -49,6 +53,17 @@ class AlgorithmTest {
         println("Signature verified: $verified")
 
         assertTrue(verified)
+
+        val provider = defaultProvider()
+        val keyPair = provider.doKeyPair(provider)
+
+        println()
+        println(" ========== ")
+        println()
+        printBytes("ECDSA public", keyPair.public.encoded)
+        println("public length: ${keyPair.public.encoded.size * 8}")
+        printBytes("ECDSA private", keyPair.private.encoded)
+        println("private length: ${keyPair.private.encoded.size * 8}")
     }
 
     private fun printBytes(name: String, bytes: ByteArray) {
