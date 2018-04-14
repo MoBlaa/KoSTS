@@ -1,6 +1,5 @@
 package org.myshelf.kosts
 
-import org.bouncycastle.crypto.util.PublicKeyFactory
 import java.nio.charset.Charset
 import java.security.KeyPair
 import java.security.PublicKey

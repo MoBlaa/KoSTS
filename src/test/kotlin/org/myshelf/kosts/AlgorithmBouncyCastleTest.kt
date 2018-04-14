@@ -1,18 +1,21 @@
 package org.myshelf.kosts
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import java.security.Security
 import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class AlgorithmTest {
-    @BeforeAll
+class AlgorithmBouncyCastleTest {
+    @BeforeEach
     fun init() {
-        Security.addProvider(BouncyCastleProvider())
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    }
+
+    @AfterAll
+    fun tearDown() {
+        Security.removeProvider("BC")
     }
 
     @Test

@@ -133,16 +133,16 @@ class ProviderBuilder() {
         // Initialize attributes if not already done
         this.secureRandom ?: this.secureRandom({ SecureRandom.getInstance("SHA1PRNG") })
         this.doKeyPair ?: this.keyPair({
-            val keyPairGenerator = KeyPairGenerator.getInstance("ECDSA", "BC")
+            val keyPairGenerator = KeyPairGenerator.getInstance("ECDSA")
             keyPairGenerator.initialize(ECGenParameterSpec("secp521r1"), this.secureRandom())
             keyPairGenerator.generateKeyPair()
         })
-        this.keyAgreementKeyPairGenerator ?: this.keyAgreementKeyPair({ KeyPairGenerator.getInstance("ECDH", "BC") }) {
+        this.keyAgreementKeyPairGenerator ?: this.keyAgreementKeyPair({ KeyPairGenerator.getInstance("ECDH") }) {
             val generator = this.keyAgreementKeyPairGenerator()
             generator.initialize(ECGenParameterSpec("secp521r1"), this.secureRandom())
             generator.genKeyPair()
         }
-        this.keyAgreement ?: this.keyAgreement({ KeyAgreement.getInstance("ECDH", "BC") }) {privateKey, publicKey ->
+        this.keyAgreement ?: this.keyAgreement({ KeyAgreement.getInstance("ECDH") }) {privateKey, publicKey ->
             val agreement = this.keyAgreement()
             agreement.init(privateKey)
             agreement.doPhase(publicKey, true)
@@ -153,11 +153,11 @@ class ProviderBuilder() {
             val tmp = this.secretKeyFactory().generateSecret(spec)
             SecretKeySpec(tmp.encoded, "AES")
         }
-        this.keyFactory ?: this.keyFactory({ KeyFactory.getInstance("ECDSA", "BC") }) { encoded ->
+        this.keyFactory ?: this.keyFactory({ KeyFactory.getInstance("ECDSA") }) { encoded ->
             val factory = this.keyFactory()
             factory.generatePublic(X509EncodedKeySpec(encoded))
         }
-        this.signature ?: this.signature({ Signature.getInstance("SHA256withECDSA", "BC") },{payload, privateKey ->
+        this.signature ?: this.signature({ Signature.getInstance("SHA256withECDSA") },{payload, privateKey ->
             val sig = this.signature()
             sig.initSign(privateKey)
             sig.update(payload)
