@@ -11,7 +11,7 @@ open class IEntity(protected val provider: Provider) {
     // Things that can be shared at the beginning
     var ownSalt: ByteArray = provider.salt()
     var ownIV: ByteArray = provider.generateIV()
-    var keyPair: KeyPair = provider.doKeyAgreementKeyPair(provider)
+    var keyPair: KeyPair = provider.genKeyAgreementKeyPair()
     var oppositeSalt: ByteArray? = null
     var oppositeIV: ByteArray? = null
 
@@ -22,7 +22,7 @@ open class IEntity(protected val provider: Provider) {
     fun reinit() {
         this.ownSalt = this.provider.salt()
         this.ownIV = this.provider.generateIV()
-        this.keyPair = this.provider.doKeyAgreementKeyPair(this.provider)
+        this.keyPair = this.provider.genKeyAgreementKeyPair()
     }
 }
 

@@ -55,7 +55,7 @@ class AlgorithmTest {
         assertTrue(verified)
 
         val provider = defaultProvider()
-        val keyPair = provider.doKeyPair(provider)
+        val keyPair = provider.genKeyPair()
 
         println()
         println(" ========== ")

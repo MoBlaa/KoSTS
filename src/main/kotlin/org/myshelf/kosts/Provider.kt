@@ -17,16 +17,24 @@ class Provider(
         val secretKeyFactory: () -> SecretKeyFactory,
         val signature: () -> Signature,
         val cipher: () -> Cipher,
-
-        val doKeyPair: Provider.() -> KeyPair,
-        val doKeyAgreement: Provider.(privateKey: PrivateKey, publicKey: PublicKey) -> ByteArray,
-        val doKeyAgreementKeyPair: Provider.() -> KeyPair,
-        val doSecretKey: Provider.(password: String, salt: ByteArray) -> SecretKey,
-        val doSign: Provider.(payload: ByteArray, privateKey: PrivateKey) -> ByteArray,
-        val doVerify: Provider.(payload: ByteArray, publicKey: PublicKey, toVerify: ByteArray) -> Boolean,
-        val doEncrypt: Provider.(secret: String, salt: ByteArray, iv: ByteArray, payload: ByteArray) -> ByteArray,
-        val doDecrypt: Provider.(secret: String, salt: ByteArray, iv: ByteArray, payload: ByteArray) -> ByteArray
+        private val doKeyPair: Provider.() -> KeyPair,
+        private val doKeyAgreement: Provider.(privateKey: PrivateKey, publicKey: PublicKey) -> ByteArray,
+        private val doKeyAgreementKeyPair: Provider.() -> KeyPair,
+        private val doSecretKey: Provider.(password: String, salt: ByteArray) -> SecretKey,
+        private val doSign: Provider.(payload: ByteArray, privateKey: PrivateKey) -> ByteArray,
+        private val doVerify: Provider.(payload: ByteArray, publicKey: PublicKey, toVerify: ByteArray) -> Boolean,
+        private val doEncrypt: Provider.(secret: String, salt: ByteArray, iv: ByteArray, payload: ByteArray) -> ByteArray,
+        private val doDecrypt: Provider.(secret: String, salt: ByteArray, iv: ByteArray, payload: ByteArray) -> ByteArray
 ) {
+    fun genKeyPair(): KeyPair = this.doKeyPair()
+    fun performKeyAgreement(privateKey: PrivateKey, publicKey: PublicKey): ByteArray = this.doKeyAgreement(privateKey, publicKey)
+    fun genKeyAgreementKeyPair(): KeyPair = this.doKeyAgreementKeyPair()
+    fun genSecretKey(password: String, salt: ByteArray): SecretKey = this.doSecretKey(password, salt)
+    fun sign(payload: ByteArray, privateKey: PrivateKey): ByteArray = this.doSign(payload, privateKey)
+    fun verify(payload: ByteArray, publicKey: PublicKey, toVerify: ByteArray): Boolean = this.doVerify(payload, publicKey, toVerify)
+    fun encrypt(secret: String, salt: ByteArray, iv: ByteArray, payload: ByteArray): ByteArray = this.doEncrypt(secret, salt, iv, payload)
+    fun decrypt(secret: String, salt: ByteArray, iv: ByteArray, payload: ByteArray): ByteArray = this.doDecrypt(secret, salt, iv, payload)
+
     fun salt(): ByteArray {
         val random = this.secureRandom()
         val salt = ByteArray(8)
@@ -146,12 +154,12 @@ class ProviderBuilder() {
         })
         this.cipher ?: this.cipher({ Cipher.getInstance("AES/CBC/PKCS5Padding") }, {secret, salt, iv, payload ->
             val cipher = this.cipher()
-            val secretKey = doSecretKey(this, secret, salt)
+            val secretKey = this.genSecretKey(secret, salt)
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, IvParameterSpec(iv))
             cipher.doFinal(payload)
         }, {secret, salt, iv, payload ->
             val cipher = this.cipher()
-            val secretKey = doSecretKey(this, secret, salt)
+            val secretKey = this.genSecretKey(secret, salt)
             cipher.init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv))
             cipher.doFinal(payload)
         })
