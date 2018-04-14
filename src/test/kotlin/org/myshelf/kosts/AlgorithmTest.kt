@@ -20,7 +20,7 @@ class AlgorithmTest {
         val alice: BaseAlice = Alice()
         val bob: BaseBob = Bob()
 
-        val (aliceSalt, aliceIV, alicePubKey) = alice.getInitDataAndPubKey()
+        val (alicePubKey, aliceSalt, aliceIV) = alice.getInitDataAndPubKey()
         printBytes("AlicePubKey", alicePubKey.encoded)
         println("public length: ${alicePubKey.encoded.size * 8}")
         printBytes("AlicePrivKey", alice.keyPair.private.encoded)

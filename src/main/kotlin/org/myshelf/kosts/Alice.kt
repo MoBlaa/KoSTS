@@ -5,7 +5,7 @@ import java.security.PublicKey
 class Alice(provider: Provider = defaultProvider()) : BaseAlice(provider) {
 
     override fun getInitDataAndPubKey(): InitData {
-        return InitData(this.ownSalt, this.ownIV, this.keyPair.public)
+        return InitData(this.keyPair.public, this.ownSalt, this.ownIV)
     }
 
     @Throws(IllegalStateException::class)

@@ -92,6 +92,7 @@ class ProviderBuilder() {
     fun keyFactory(keyFactory: () -> KeyFactory,
                    doPubKey: Provider.(encoded: ByteArray) -> PublicKey) {
         this.keyFactory = keyFactory
+        this.doPubKey = doPubKey
     }
 
     fun keyAgreementKeyPair(keyPairGenerator: () -> KeyPairGenerator,
