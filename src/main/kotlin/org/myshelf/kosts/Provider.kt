@@ -2,6 +2,7 @@ package org.myshelf.kosts
 
 import java.security.*
 import java.security.spec.ECGenParameterSpec
+import java.security.spec.X509EncodedKeySpec
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
 import javax.crypto.SecretKey
@@ -15,9 +16,11 @@ class Provider(
         val keyAgreementKeyPairGenerator: () -> KeyPairGenerator,
         val keyAgreement: () -> KeyAgreement,
         val secretKeyFactory: () -> SecretKeyFactory,
+        val keyFactory: () -> KeyFactory,
         val signature: () -> Signature,
         val cipher: () -> Cipher,
         private val doKeyPair: Provider.() -> KeyPair,
+        private val doPubKey: Provider.(encoded: ByteArray) -> PublicKey,
         private val doKeyAgreement: Provider.(privateKey: PrivateKey, publicKey: PublicKey) -> ByteArray,
         private val doKeyAgreementKeyPair: Provider.() -> KeyPair,
         private val doSecretKey: Provider.(password: String, salt: ByteArray) -> SecretKey,
@@ -34,6 +37,7 @@ class Provider(
     fun verify(payload: ByteArray, publicKey: PublicKey, toVerify: ByteArray): Boolean = this.doVerify(payload, publicKey, toVerify)
     fun encrypt(secret: String, salt: ByteArray, iv: ByteArray, payload: ByteArray): ByteArray = this.doEncrypt(secret, salt, iv, payload)
     fun decrypt(secret: String, salt: ByteArray, iv: ByteArray, payload: ByteArray): ByteArray = this.doDecrypt(secret, salt, iv, payload)
+    fun decodePubKey(encoded: ByteArray): PublicKey = this.doPubKey(encoded)
 
     fun salt(): ByteArray {
         val random = this.secureRandom()
@@ -65,9 +69,11 @@ class ProviderBuilder() {
     private var secretKeyFactory: (() -> SecretKeyFactory)? = null
     private var signature: (() -> Signature)? = null
     private var cipher: (() -> Cipher)? = null
+    private var keyFactory: (() -> KeyFactory)? = null
 
     private var doKeyPair: (Provider.() -> KeyPair)? = null
     private var doKeyAgreement: (Provider.(privateKey: PrivateKey, publicKey: PublicKey) -> ByteArray)? = null
+    private var doPubKey: (Provider.(encoded: ByteArray) -> PublicKey)? = null
     private var doKeyAgreementKeyPair: (Provider.() -> KeyPair)? = null
     private var doSecretKey: (Provider.(password: String, salt: ByteArray) -> SecretKey)? = null
     private var doSign: (Provider.(payload: ByteArray, privateKey: PrivateKey) -> ByteArray)? = null
@@ -81,6 +87,11 @@ class ProviderBuilder() {
 
     fun keyPair(doKeyPair: Provider.() -> KeyPair) {
         this.doKeyPair = doKeyPair
+    }
+
+    fun keyFactory(keyFactory: () -> KeyFactory,
+                   doPubKey: Provider.(encoded: ByteArray) -> PublicKey) {
+        this.keyFactory = keyFactory
     }
 
     fun keyAgreementKeyPair(keyPairGenerator: () -> KeyPairGenerator,
@@ -141,6 +152,10 @@ class ProviderBuilder() {
             val tmp = this.secretKeyFactory().generateSecret(spec)
             SecretKeySpec(tmp.encoded, "AES")
         }
+        this.keyFactory ?: this.keyFactory({ KeyFactory.getInstance("ECDSA", "BC") }) { encoded ->
+            val factory = this.keyFactory()
+            factory.generatePublic(X509EncodedKeySpec(encoded))
+        }
         this.signature ?: this.signature({ Signature.getInstance("SHA256withECDSA", "BC") },{payload, privateKey ->
             val sig = this.signature()
             sig.initSign(privateKey)
@@ -169,9 +184,11 @@ class ProviderBuilder() {
                 this.keyAgreementKeyPairGenerator!!,
                 this.keyAgreement!!,
                 this.secretKeyFactory!!,
+                this.keyFactory!!,
                 this.signature!!,
                 this.cipher!!,
                 this.doKeyPair!!,
+                this.doPubKey!!,
                 this.doKeyAgreement!!,
                 this.doKeyAgreementKeyPair!!,
                 this.doSecretKey!!,
